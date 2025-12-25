@@ -564,7 +564,7 @@ class _GraphScreenState extends State<GraphScreen> {
                 child: ListView.builder(
                   scrollDirection: Axis.horizontal,
                   padding: const EdgeInsets.all(8.0),
-                  itemCount: sensorTypes.length,
+                  itemCount: sensorTypes.length - 3,
                   itemBuilder: (context, index) {
                     final sensor = sensorTypes[index];
                     final isSelected = index == _selectedIndex;
