@@ -55,8 +55,9 @@ int chick_count_b_d = 20,
 
 const String loginurl =
     'https://lm6pfwq1li.execute-api.ap-south-1.amazonaws.com/dev/userLogin';
-
 const String sens_data = "a709gubess6fb-ats.iot.ap-south-1.amazonaws.com";
+const String graph_url =
+    "https://lm6pfwq1li.execute-api.ap-south-1.amazonaws.com/dev/fetchAvgData";
 
 const certPath = "assets/certs/device_certificate.crt";
 const privateKeyPath = "assets/certs/private_key.key";

@@ -21,8 +21,11 @@ class DetailsPage extends StatefulWidget {
 class _DetailsPageState extends State<DetailsPage> with NetworkMonitor {
   late Map<String, dynamic> sens_data_f; // Current node's sensor data
   late String node_val; // Current node number (e.g., "NDB01001")
-  late Future<Map<String, dynamic>?> _weatherFuture; // Weather API future
-  StreamSubscription<List<Map<String, dynamic>>>? _subscription; // MQTT stream subscription
+  late Future<Map<String, dynamic>?> _weatherFuture; // Weather API future var
+  late Future<Map<String, dynamic>?>
+  _graphData; // Graph data for daily future var
+  StreamSubscription<List<Map<String, dynamic>>>?
+  _subscription; // MQTT stream subscription
 
   @override
   void initState() {
@@ -64,7 +67,7 @@ class _DetailsPageState extends State<DetailsPage> with NetworkMonitor {
               final sns = record['Sns'];
               if (sns is Map && sns.containsKey('Message')) {
                 var message = sns['Message'];
-                
+
                 // Decode Message if it's a JSON string
                 if (message is String) {
                   try {
@@ -76,22 +79,53 @@ class _DetailsPageState extends State<DetailsPage> with NetworkMonitor {
 
                 // Update only if message is for this node
                 if (message is Map<String, dynamic>) {
-                  final nodeNum = message['Node Number'] ?? message['node_number'];
+                  final nodeNum =
+                      message['Node Number'] ?? message['node_number'];
                   if (nodeNum != null && nodeNum.toString() == node_val) {
                     // Map MQTT field names to UI field names, preserve last values if new ones are null
                     setState(() {
                       sens_data_f = {
                         'Node Number': nodeNum,
-                        'temperature_celsius': message['Temp'] ?? message['temperature_celsius'] ?? sens_data_f['temperature_celsius'],
-                        'relative_humidity_percent': message['RH'] ?? message['relative_humidity_percent'] ?? sens_data_f['relative_humidity_percent'],
-                        'co2_ppm': message['CO2'] ?? message['co2_ppm'] ?? sens_data_f['co2_ppm'],
-                        'nh3_ppm': message['Nh3'] ?? message['nh3_ppm'] ?? sens_data_f['nh3_ppm'],
-                        'h2s_ppm': message['H2s'] ?? message['h2s_ppm'] ?? sens_data_f['h2s_ppm'],
-                        'ch4_data': message['CH4'] ?? message['ch4_data'] ?? sens_data_f['ch4_data'],
-                        'soil_moisture': message['Soil Moisture'] ?? message['soil_moisture'] ?? sens_data_f['soil_moisture'],
-                        'weight': message['WT'] ?? message['weight'] ?? sens_data_f['weight'],
-                        'battery': message['Battery Per'] ?? message['battery'] ?? sens_data_f['battery'],
-                        'lux': message['Lux'] ?? message['lux'] ?? sens_data_f['lux'],
+                        'temperature_celsius':
+                            message['Temp'] ??
+                            message['temperature_celsius'] ??
+                            sens_data_f['temperature_celsius'],
+                        'relative_humidity_percent':
+                            message['RH'] ??
+                            message['relative_humidity_percent'] ??
+                            sens_data_f['relative_humidity_percent'],
+                        'co2_ppm':
+                            message['CO2'] ??
+                            message['co2_ppm'] ??
+                            sens_data_f['co2_ppm'],
+                        'nh3_ppm':
+                            message['Nh3'] ??
+                            message['nh3_ppm'] ??
+                            sens_data_f['nh3_ppm'],
+                        'h2s_ppm':
+                            message['H2s'] ??
+                            message['h2s_ppm'] ??
+                            sens_data_f['h2s_ppm'],
+                        'ch4_data':
+                            message['CH4'] ??
+                            message['ch4_data'] ??
+                            sens_data_f['ch4_data'],
+                        'soil_moisture':
+                            message['Soil Moisture'] ??
+                            message['soil_moisture'] ??
+                            sens_data_f['soil_moisture'],
+                        'weight':
+                            message['WT'] ??
+                            message['weight'] ??
+                            sens_data_f['weight'],
+                        'battery':
+                            message['Battery Per'] ??
+                            message['battery'] ??
+                            sens_data_f['battery'],
+                        'lux':
+                            message['Lux'] ??
+                            message['lux'] ??
+                            sens_data_f['lux'],
                         'timestamp': DateTime.now().toString(),
                       };
                     });
@@ -106,6 +140,7 @@ class _DetailsPageState extends State<DetailsPage> with NetworkMonitor {
 
     // Fetch weather data for location
     _weatherFuture = getWeatherByCity('Coimbatore');
+    _graphData = getGraphData();
   }
 
   @override
@@ -115,11 +150,33 @@ class _DetailsPageState extends State<DetailsPage> with NetworkMonitor {
     super.dispose();
   }
 
+  Future<Map<String, dynamic>?> getGraphData() async {
+    try {
+      final res = await http.get(
+        Uri.parse("$graph_url?phonenumber=${mobilenum.text.trim()}"),
+      );
+      if (res.statusCode == 200) {
+        print("Graph Data Success : ${res.body}");
+        final decoded = jsonDecode(res.body);
+        if (decoded is Map<String, dynamic>) return decoded;
+        return null;
+      } else {
+        print("Graph Data error : ${res.statusCode}");
+        return null;
+      }
+    } catch (e) {
+      print("Exception: $e");
+      return null;
+    }
+  }
+
   Future<Map<String, dynamic>?> getWeatherByCity(String city) async {
     try {
       // Get coordinates from city name
       final geoRes = await http.get(
-        Uri.parse('https://geocoding-api.open-meteo.com/v1/search?name=$city&count=1'),
+        Uri.parse(
+          'https://geocoding-api.open-meteo.com/v1/search?name=$city&count=1',
+        ),
       );
       if (geoRes.statusCode != 200) return null;
 
@@ -141,11 +198,17 @@ class _DetailsPageState extends State<DetailsPage> with NetworkMonitor {
 
       final w = jsonDecode(weatherRes.body);
       return {
-        'avg': num.parse(w['current_weather']['temperature'].toString()).toInt(),
-        'min': num.parse(w['daily']['temperature_2m_min'][0].toString()).toInt(),
-        'max': num.parse(w['daily']['temperature_2m_max'][0].toString()).toInt(),
+        'avg':
+            num.parse(w['current_weather']['temperature'].toString()).toInt(),
+        'min':
+            num.parse(w['daily']['temperature_2m_min'][0].toString()).toInt(),
+        'max':
+            num.parse(w['daily']['temperature_2m_max'][0].toString()).toInt(),
         'wind': num.parse(w['current_weather']['windspeed'].toString()).toInt(),
-        'humidity': num.parse(w['hourly']['relative_humidity_2m'][0].toString()).toInt(),
+        'humidity':
+            num.parse(
+              w['hourly']['relative_humidity_2m'][0].toString(),
+            ).toInt(),
       };
     } catch (e) {
       return null;
@@ -427,9 +490,9 @@ class _DetailsPageState extends State<DetailsPage> with NetworkMonitor {
                       backgroundColor: Colors.white,
                       child: cirul_data(
                         'assets/image/thermome_col_svg.png',
-                        sens_data_f["temperature_celsius"] != null 
-                          ? '${sens_data_f["temperature_celsius"]}℃'
-                          : '--',
+                        sens_data_f["temperature_celsius"] != null
+                            ? '${sens_data_f["temperature_celsius"]}℃'
+                            : '--',
                       ),
                     ),
                   ),
@@ -442,8 +505,8 @@ class _DetailsPageState extends State<DetailsPage> with NetworkMonitor {
                       child: cirul_data(
                         'assets/image/humid_col_svg.png',
                         sens_data_f["relative_humidity_percent"] != null
-                          ? '${sens_data_f["relative_humidity_percent"]}%'
-                          : '--',
+                            ? '${sens_data_f["relative_humidity_percent"]}%'
+                            : '--',
                       ),
                     ),
                   ),
@@ -462,8 +525,8 @@ class _DetailsPageState extends State<DetailsPage> with NetworkMonitor {
                       child: cirul_data(
                         'assets/image/co2_col_svg.png',
                         sens_data_f["co2_ppm"] != null
-                          ? '${sens_data_f["co2_ppm"]}PPM'
-                          : '--',
+                            ? '${sens_data_f["co2_ppm"]}PPM'
+                            : '--',
                       ),
                     ),
                   ),
@@ -476,8 +539,8 @@ class _DetailsPageState extends State<DetailsPage> with NetworkMonitor {
                       child: cirul_data(
                         'assets/image/ammonia_col_svg.png',
                         sens_data_f["nh3_ppm"] != null
-                          ? '${sens_data_f["nh3_ppm"]}PPM'
-                          : '--',
+                            ? '${sens_data_f["nh3_ppm"]}PPM'
+                            : '--',
                       ),
                     ),
                   ),
@@ -496,8 +559,8 @@ class _DetailsPageState extends State<DetailsPage> with NetworkMonitor {
                       child: cirul_data(
                         'assets/image/H2S_col_svg.png',
                         sens_data_f["h2s_ppm"] != null
-                          ? '${sens_data_f["h2s_ppm"]}PPM'
-                          : '--',
+                            ? '${sens_data_f["h2s_ppm"]}PPM'
+                            : '--',
                       ),
                     ),
                   ),
@@ -510,8 +573,8 @@ class _DetailsPageState extends State<DetailsPage> with NetworkMonitor {
                       child: cirul_data(
                         'assets/image/ch4_col_svg.png',
                         sens_data_f["ch4_data"] != null
-                          ? '${sens_data_f["ch4_data"]}PPM'
-                          : '--',
+                            ? '${sens_data_f["ch4_data"]}PPM'
+                            : '--',
                       ),
                     ),
                   ),
@@ -523,7 +586,10 @@ class _DetailsPageState extends State<DetailsPage> with NetworkMonitor {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => GraphScreen(chickData: dummyChickData),
+                      builder: (_) => GraphScreen(
+                        chickData: _graphData,
+                        nodeId: node_val,
+                      ),
                     ),
                   );
                 },
